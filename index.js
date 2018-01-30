@@ -139,6 +139,7 @@ module.exports = function (graph, settings) {
      * This is useful if you want to allow users to update the physics settings of your layout interactively
      */
     resetStable: resetStable,
+    isStable: function() {isStable = true},
 
   /**
      * Stops animation and deallocates all allocated resources
