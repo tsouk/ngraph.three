@@ -18,7 +18,7 @@ module.exports = function (graph, settings) {
   var scene = settings.scene || new THREE.Scene();
   let delaunay;
   let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, 500);
-
+  
   var material = new THREE.MeshStandardMaterial( { color : 0x00cc00 } );
   var geometry = new THREE.Geometry();
   scene.add( new THREE.Mesh( geometry, material ) );
@@ -250,9 +250,10 @@ module.exports = function (graph, settings) {
     }
     // todo: this adds GC pressure. Remove functional iterators
     //Object.keys(linkUI).forEach(renderLink);
-    Object.keys(nodeUI).forEach(renderNode);
+    //Object.keys(nodeUI).forEach(renderNode);
     let nodeArray = new Array();
     Object.keys(nodeUI).forEach(function(key) {
+      renderNode(key);
       //let point = [nodeUI[key].pos.x, nodeUI[key].pos.y];
       nodeArray.push(nodeUI[key]);
     });
@@ -272,6 +273,11 @@ module.exports = function (graph, settings) {
     // delaunay = new Delaunator(nodeUI, (node) => node.pos.x,  (nodeId) => node.pos.y); // doing this whenever nodes are added
     //getDelaunayTriangles(nodeArray);
     let triangles = throttledDelaunatorTriangles(nodeArray);
+    // nodeUI[triangles[i]].data.depth
+    // nodeUI[triangles[i]].data.numberOfChildren
+    // nodeUI[triangles[i]].data.KB
+    // function computeHeight (depth, noChildren, KB) {...}
+
     // also add the seaNodes! remember, there is no LINE rendering now
     // ...maybe the graph has that already
     // YOU CAN push the whole node, or at least add the depth.
@@ -280,7 +286,7 @@ module.exports = function (graph, settings) {
 
     // push their coordinates all in geometry.vertices array, and z = -1 * depth * HEIGHT_STEP
     // make a face for all these, every 3 of them
-
+    
     // make the geometry?
 
     // for (var i = 0; i < geometry.vertices.length; i += 3) {
@@ -293,7 +299,7 @@ module.exports = function (graph, settings) {
     //   geometry.faces.push( face );
     // }
 
-
+    
     renderer.render(scene, camera);
   }
 
@@ -435,7 +441,7 @@ module.exports = function (graph, settings) {
       console.log(e);
     }
     if (delaunay) {
-      //console.log(delaunay.triangles);
+      console.log(delaunay.triangles);
       return delaunay.triangles;
     }
     return null
