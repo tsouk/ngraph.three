@@ -1,7 +1,10 @@
-var THREE = require('three');
+const THREE = require('three');
+const delaunator = require('delaunator')
+const _ = require('lodash');
+const consoleThrottled = _.throttle(console.log, 500);
 
 module.exports = function (graph, settings) {
-  var merge = require('ngraph.merge');
+  const merge = require('ngraph.merge');
   settings = merge(settings, {
     interactive: true
   });
@@ -13,6 +16,12 @@ module.exports = function (graph, settings) {
   var renderer = createRenderer(settings);
   var camera = createCamera(settings);
   var scene = settings.scene || new THREE.Scene();
+  let delaunay;
+  let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, 500);
+
+  var material = new THREE.MeshStandardMaterial( { color : 0x00cc00 } );
+  var geometry = new THREE.Geometry();
+  scene.add( new THREE.Mesh( geometry, material ) );
 
   var defaults = require('./lib/defaults');
 
@@ -240,8 +249,51 @@ module.exports = function (graph, settings) {
       beforeFrameRender();
     }
     // todo: this adds GC pressure. Remove functional iterators
-    Object.keys(linkUI).forEach(renderLink);
+    //Object.keys(linkUI).forEach(renderLink);
     Object.keys(nodeUI).forEach(renderNode);
+    let nodeArray = new Array();
+    Object.keys(nodeUI).forEach(function(key) {
+      //let point = [nodeUI[key].pos.x, nodeUI[key].pos.y];
+      nodeArray.push(nodeUI[key]);
+    });
+    //console.log(nodeArray);
+    //console.log(nodeArray[4]);
+    // turn off line rendering, you still need the nodes... maybe
+    // ngraph.three actually needs npm install the delaunator...
+    // --------------
+
+
+    // update ngraph.three with these changes before you rm -rf node_modules
+    // if you turn off node rendering then you need to make the seaNode here
+
+    // create the geometry outside here and add to scene, like an initGeometry()
+
+    // maybe run the delaunator every 60 frames. Debounce it.
+    // delaunay = new Delaunator(nodeUI, (node) => node.pos.x,  (nodeId) => node.pos.y); // doing this whenever nodes are added
+    //getDelaunayTriangles(nodeArray);
+    let triangles = throttledDelaunatorTriangles(nodeArray);
+    // also add the seaNodes! remember, there is no LINE rendering now
+    // ...maybe the graph has that already
+    // YOU CAN push the whole node, or at least add the depth.
+
+    // get the triangle indices that map to the points[]
+
+    // push their coordinates all in geometry.vertices array, and z = -1 * depth * HEIGHT_STEP
+    // make a face for all these, every 3 of them
+
+    // make the geometry?
+
+    // for (var i = 0; i < geometry.vertices.length; i += 3) {
+    //   //create a new face using vertices 0, 1, 2
+    //   var normal = new THREE.Vector3( 0, 1, 0 ); //optional
+    //   var color = new THREE.Color( 0xffaa00 ); //optional
+    //   var materialIndex = 0; //optional
+    //   // var face = new THREE.Face3( 0, 1, 2, normal, color, materialIndex );
+    //   var face = new THREE.Face3( triangles[i], triangles[i+1], triangles[i+2], normal, color, materialIndex );
+    //   geometry.faces.push( face );
+    // }
+
+
     renderer.render(scene, camera);
   }
 
@@ -374,4 +426,19 @@ module.exports = function (graph, settings) {
     graph.forEachLink(initLink);
     graph.forEachNode(initNode);
   }
+
+  function getDelaunayTriangles(nodeArray) {
+    try {
+      delaunay = new delaunator(nodeArray, (node) => node.pos.x,  (node) => node.pos.y);
+    }
+    catch (e) {
+      console.log(e);
+    }
+    if (delaunay) {
+      //console.log(delaunay.triangles);
+      return delaunay.triangles;
+    }
+    return null
+  }
+
 };
