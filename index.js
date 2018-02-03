@@ -1,7 +1,10 @@
 const THREE = require('three');
 const delaunator = require('delaunator')
 const _ = require('lodash');
-const consoleThrottled = _.throttle(console.log, 500);
+const DEL_THROTTLE = 500;
+const ALPHA = 0.4;
+const HEIGHT_STEP = 60;
+const consoleThrottled = _.throttle(console.log, DEL_THROTTLE);
 
 module.exports = function (graph, settings) {
   const merge = require('ngraph.merge');
@@ -17,7 +20,7 @@ module.exports = function (graph, settings) {
   var camera = createCamera(settings);
   var scene = settings.scene || new THREE.Scene();
   let delaunay;
-  let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, 500);
+  let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, DEL_THROTTLE);
   
   var material = new THREE.MeshStandardMaterial( { color : 0x00cc00 } );
   var geometry = new THREE.Geometry();
@@ -254,8 +257,12 @@ module.exports = function (graph, settings) {
     let nodeArray = new Array();
     Object.keys(nodeUI).forEach(function(key) {
       renderNode(key);
-      //let point = [nodeUI[key].pos.x, nodeUI[key].pos.y];
       nodeArray.push(nodeUI[key]);
+      //  Check if seanode exists and update it's x,y
+      //  else
+      //    check if node is < maxDepth and add seaNode to scene
+      //  add seanode to the nodeUI array ready for the delaunator
+      // set height of node
     });
     //console.log(nodeArray);
     //console.log(nodeArray[4]);
@@ -441,7 +448,8 @@ module.exports = function (graph, settings) {
       console.log(e);
     }
     if (delaunay) {
-      console.log(delaunay.triangles);
+      //console.log(delaunay.triangles);
+      // get the Alpha shape
       return delaunay.triangles;
     }
     return null

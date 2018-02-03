@@ -20,6 +20,8 @@
     "url": "https://github.com/anvaka/ngraph.three"
   },
   "dependencies": {
+    "circumradius": "^1.0.0",
+    "delaunator": "^1.0.5",
     "ngraph.forcelayout3d": "^0.0.15",
     "ngraph.merge": "^0.0.1",
     "three.trackball": "^0.0.1"
