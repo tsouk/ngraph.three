@@ -355,46 +355,46 @@ module.exports = function (graph, settings) {
     // Object.keys(nodeUI).forEach(function(key) {
       // renderNode(key);
     // });
-
-    for ( var i = 0; i < nodeArray.length; i++ ) {
-      particlePositions[ i * 3     ] = nodeArray[i].pos.x;
-      particlePositions[ i * 3 + 1 ] = nodeArray[i].pos.y;
-      if (nodeArray[i].userData.depth) {
-        particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].userData.depth * HEIGHT_STEP;
-      }
-      else {
-        particlePositions[ i * 3 + 2 ] = -1 * maxDepth * HEIGHT_STEP;
-      }
-    }
-    //console.log(particlePositions);
-    particles.setDrawRange( 0, nodeArray.length );
-    pointCloud.geometry.attributes.position.needsUpdate = true;
-
-    // TODO: find the best place to call the Delaunator
-    // if (!isStable) {
-    //   triangles = throttledDelaunatorTriangles(nodeArray);
-    // }
-    if (triangles && triangles.length > 0) {
-      for ( var i = 0; i < triangles.length; i++ )  {
-        positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
-        positions[ i * 3 + 1 ] = (nodeArray[triangles[i]].pos.y);
-        if (nodeArray[triangles[i]].userData.depth) {
-          positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].userData.depth * HEIGHT_STEP);
+    if (!isStable) {
+      for ( var i = 0; i < nodeArray.length; i++ ) {
+        particlePositions[ i * 3     ] = nodeArray[i].pos.x;
+        particlePositions[ i * 3 + 1 ] = nodeArray[i].pos.y;
+        if (nodeArray[i].userData.depth) {
+          particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].userData.depth * HEIGHT_STEP;
         }
         else {
-          positions[ i * 3 + 2 ] = (-1 * maxDepth * HEIGHT_STEP);
+          particlePositions[ i * 3 + 2 ] = -1 * maxDepth * HEIGHT_STEP;
         }
       }
+      //console.log(particlePositions);
+      particles.setDrawRange( 0, nodeArray.length );
+      pointCloud.geometry.attributes.position.needsUpdate = true;
+  
+      // TODO: find the best place to call the Delaunator
+      // if (!isStable) {
+      //   triangles = throttledDelaunatorTriangles(nodeArray);
+      // }
+      if (triangles && triangles.length > 0) {
+        for ( var i = 0; i < triangles.length; i++ )  {
+          positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
+          positions[ i * 3 + 1 ] = (nodeArray[triangles[i]].pos.y);
+          if (nodeArray[triangles[i]].userData.depth) {
+            positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].userData.depth * HEIGHT_STEP);
+          }
+          else {
+            positions[ i * 3 + 2 ] = (-1 * maxDepth * HEIGHT_STEP);
+          }
+        }
+  
+        // COMPUTE THE NORMALS YOURSELF, currently computed with the dalaunay... which is kind of ok.
+  
+        mesh.geometry.setDrawRange( 0, triangles.length * 3 );
+        mesh.geometry.attributes.position.needsUpdate = true;
+        mesh.geometry.attributes.color.needsUpdate = true;
+        mesh.geometry.attributes.normal.needsUpdate = true;
+      }
 
-      // COMPUTE THE NORMALS YOURSELF, currently computed with the dalaunay... which is kind of ok.
-
-      mesh.geometry.setDrawRange( 0, triangles.length * 3 );
-      mesh.geometry.attributes.position.needsUpdate = true;
-      mesh.geometry.attributes.color.needsUpdate = true;
-      mesh.geometry.attributes.normal.needsUpdate = true;
-      
     }
-
     renderer.render(scene, camera);
   }
 
@@ -438,7 +438,7 @@ module.exports = function (graph, settings) {
         }
         // console.log('adding seanode');
 
-        nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
+        // nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
 
         // console.group();
         // console.log(nodeUI[key].userData.seaNode);
