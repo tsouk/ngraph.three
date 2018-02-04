@@ -1,9 +1,10 @@
 const THREE = require('three');
-const delaunator = require('delaunator')
+const delaunator = require('delaunator');
+const circumradius = require('circumradius');
 const _ = require('lodash');
 const DEL_THROTTLE = 500;
-const ALPHA = 0.4;
-const HEIGHT_STEP = 60;
+const ALPHA = 20;
+const HEIGHT_STEP = 30;
 const consoleThrottled = _.throttle(console.log, DEL_THROTTLE);
 
 module.exports = function (graph, settings) {
@@ -19,12 +20,32 @@ module.exports = function (graph, settings) {
   var renderer = createRenderer(settings);
   var camera = createCamera(settings);
   var scene = settings.scene || new THREE.Scene();
+
+  // -------- Delaunay ---------
   let delaunay;
   let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, DEL_THROTTLE);
+  let nodeArray = [];
+  let triangles = [];
+  let maxDepth = 0;
+
+  // -------- Particles ----------
+  var group;
+  var pointCloud;
+  var maxParticleCount = 1500; //TODO: get the right number from recurseBF. IT IS KNOWN!
+  var particleCount = 1500; // TODO: DO THISSS!!!
+  var particlesData = [];
+  var particlePositions;
+  var linesMesh;
+  var positions, colors;
+  var particles;
+  var r = 800;
+  var rHalf = r / 2;
+
+
+
   
-  var material = new THREE.MeshStandardMaterial( { color : 0x00cc00 } );
-  var geometry = new THREE.Geometry();
-  scene.add( new THREE.Mesh( geometry, material ) );
+  // -------------------------------------------------------
+
 
   var defaults = require('./lib/defaults');
 
@@ -153,7 +174,7 @@ module.exports = function (graph, settings) {
     resetStable: resetStable,
     isStable: function() {isStable = true},
 
-  /**
+    /**
      * Stops animation and deallocates all allocated resources
      */
     dispose: dispose,
@@ -187,6 +208,82 @@ module.exports = function (graph, settings) {
     graph.on('changed', onGraphChanged);
 
     if (settings.interactive) createControls();
+
+    //scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
+    // ---------- Lights ----------
+
+    scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+    var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
+    light1.position.set( 1, 1, 1 );
+    scene.add( light1 );
+
+    var light2 = new THREE.DirectionalLight( 0xffffff, 1.5 );
+    light2.position.set( 0, -1, 0 );
+    scene.add( light2 );
+
+
+    // -------- Particles ----------
+    group = new THREE.Group();
+    scene.add( group );
+    var helper = new THREE.BoxHelper( new THREE.Mesh( new THREE.BoxGeometry( r, r, r ) ) );
+    helper.material.color.setHex( 0x080808 );
+    helper.material.blending = THREE.AdditiveBlending;
+    helper.material.transparent = true;
+    group.add( helper );
+    var segments = maxParticleCount * maxParticleCount;
+
+    positions = new Float32Array( segments * 3 );
+    
+    var faceColor = new THREE.Color( 0x108060 );
+    colors = new Float32Array( maxParticleCount * 3 );
+    for (let index = 0; index < colors.length; index += 3) {
+      colors[index] = faceColor.r;
+      colors[index+1] = faceColor.g;
+      colors[index+2] = faceColor.b;
+    }
+
+    var pMaterial = new THREE.PointsMaterial( {
+      color: 0xFF0000,
+      size: 5,
+      //blending: THREE.AdditiveBlending,
+      transparent: true,
+      sizeAttenuation: false
+    } );
+
+    particles = new THREE.BufferGeometry();
+    particlePositions = new Float32Array( maxParticleCount * 3 );
+
+    particles.setDrawRange( 0, particleCount );
+    particles.addAttribute( 'position', new THREE.BufferAttribute( particlePositions, 3 ).setDynamic( true ) );
+
+    // create the particle system
+    pointCloud = new THREE.Points( particles, pMaterial );
+    group.add( pointCloud );
+
+    var geometry = new THREE.BufferGeometry();
+
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setDynamic( true ) );
+    // add normals???
+    geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setDynamic( true ) );
+
+    geometry.computeBoundingSphere();
+
+    geometry.setDrawRange( 0, 0 );
+
+    // var material = new THREE.LineBasicMaterial( {
+    //   vertexColors: THREE.VertexColors,
+    //   //blending: THREE.AdditiveBlending,
+    //   transparent: true
+    // } );
+
+    var material = new THREE.MeshPhongMaterial( {
+      color: 0xaaaaaa, specular: 0xffffff, shininess: 50,
+      side: THREE.DoubleSide, vertexColors: THREE.VertexColors, flatShading: false
+    } );
+
+    mesh = new THREE.Mesh( geometry, material );
+    group.add( mesh );
   }
 
   function run() {
@@ -254,59 +351,50 @@ module.exports = function (graph, settings) {
     // todo: this adds GC pressure. Remove functional iterators
     //Object.keys(linkUI).forEach(renderLink);
     //Object.keys(nodeUI).forEach(renderNode);
-    let nodeArray = new Array();
-    Object.keys(nodeUI).forEach(function(key) {
-      renderNode(key);
-      nodeArray.push(nodeUI[key]);
-      //  Check if seanode exists and update it's x,y
-      //  else
-      //    check if node is < maxDepth and add seaNode to scene
-      //  add seanode to the nodeUI array ready for the delaunator
-      // set height of node
-    });
-    //console.log(nodeArray);
-    //console.log(nodeArray[4]);
-    // turn off line rendering, you still need the nodes... maybe
-    // ngraph.three actually needs npm install the delaunator...
-    // --------------
+   
+    // Object.keys(nodeUI).forEach(function(key) {
+      // renderNode(key);
+    // });
 
+    for ( var i = 0; i < nodeArray.length; i++ ) {
+      particlePositions[ i * 3     ] = nodeArray[i].pos.x;
+      particlePositions[ i * 3 + 1 ] = nodeArray[i].pos.y;
+      if (nodeArray[i].userData.depth) {
+        particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].userData.depth * HEIGHT_STEP;
+      }
+      else {
+        particlePositions[ i * 3 + 2 ] = -1 * maxDepth * HEIGHT_STEP;
+      }
+    }
+    //console.log(particlePositions);
+    particles.setDrawRange( 0, nodeArray.length );
+    pointCloud.geometry.attributes.position.needsUpdate = true;
 
-    // update ngraph.three with these changes before you rm -rf node_modules
-    // if you turn off node rendering then you need to make the seaNode here
-
-    // create the geometry outside here and add to scene, like an initGeometry()
-
-    // maybe run the delaunator every 60 frames. Debounce it.
-    // delaunay = new Delaunator(nodeUI, (node) => node.pos.x,  (nodeId) => node.pos.y); // doing this whenever nodes are added
-    //getDelaunayTriangles(nodeArray);
-    let triangles = throttledDelaunatorTriangles(nodeArray);
-    // nodeUI[triangles[i]].data.depth
-    // nodeUI[triangles[i]].data.numberOfChildren
-    // nodeUI[triangles[i]].data.KB
-    // function computeHeight (depth, noChildren, KB) {...}
-
-    // also add the seaNodes! remember, there is no LINE rendering now
-    // ...maybe the graph has that already
-    // YOU CAN push the whole node, or at least add the depth.
-
-    // get the triangle indices that map to the points[]
-
-    // push their coordinates all in geometry.vertices array, and z = -1 * depth * HEIGHT_STEP
-    // make a face for all these, every 3 of them
-    
-    // make the geometry?
-
-    // for (var i = 0; i < geometry.vertices.length; i += 3) {
-    //   //create a new face using vertices 0, 1, 2
-    //   var normal = new THREE.Vector3( 0, 1, 0 ); //optional
-    //   var color = new THREE.Color( 0xffaa00 ); //optional
-    //   var materialIndex = 0; //optional
-    //   // var face = new THREE.Face3( 0, 1, 2, normal, color, materialIndex );
-    //   var face = new THREE.Face3( triangles[i], triangles[i+1], triangles[i+2], normal, color, materialIndex );
-    //   geometry.faces.push( face );
+    // TODO: find the best place to call the Delaunator
+    // if (!isStable) {
+    //   triangles = throttledDelaunatorTriangles(nodeArray);
     // }
+    if (triangles && triangles.length > 0) {
+      for ( var i = 0; i < triangles.length; i++ )  {
+        positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
+        positions[ i * 3 + 1 ] = (nodeArray[triangles[i]].pos.y);
+        if (nodeArray[triangles[i]].userData.depth) {
+          positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].userData.depth * HEIGHT_STEP);
+        }
+        else {
+          positions[ i * 3 + 2 ] = (-1 * maxDepth * HEIGHT_STEP);
+        }
+      }
 
-    
+      // COMPUTE THE NORMALS YOURSELF, currently computed with the dalaunay... which is kind of ok.
+
+      mesh.geometry.setDrawRange( 0, triangles.length * 3 );
+      mesh.geometry.attributes.position.needsUpdate = true;
+      mesh.geometry.attributes.color.needsUpdate = true;
+      mesh.geometry.attributes.normal.needsUpdate = true;
+      
+    }
+
     renderer.render(scene, camera);
   }
 
@@ -319,14 +407,54 @@ module.exports = function (graph, settings) {
   }
 
   function initNode(node) {
-    var ui = nodeUIBuilder(node);
+    // console.log(node);
+    // this shit has to change, I don't need the mesh at all...
+    var ui = nodeUIBuilder(node); // TODO: this is the nodeS that are hanging around
     if (!ui) return;
     // augment it with position data:
     ui.pos = layout.getNodePosition(node.id);
     // and store for subsequent use:
     nodeUI[node.id] = ui;
 
-    scene.add(ui);
+    let depth = (node.links &&
+      node.links.length > 0 &&
+      node.links[0].data &&
+      node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
+    nodeUI[node.id].userData.depth = depth; 
+    maxDepth = maxDepth < depth ? depth : maxDepth;
+    //console.log(maxDepth);
+    nodeArray.push(ui);
+    
+    Object.keys(nodeUI).forEach(function(key) {
+      if (!nodeUI[key].userData.seaNode && nodeUI[key].userData.depth < maxDepth) {
+        nodeUI[key].userData.seaNode = {
+          pos: {
+            x: nodeUI[key].pos.x, //got the pos.x of the father below!!!
+            y: nodeUI[key].pos.y
+          },
+          userData: {
+            depth: null // this doeanst workk
+          }
+        }
+        // console.log('adding seanode');
+
+        nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
+
+        // console.group();
+        // console.log(nodeUI[key].userData.seaNode);
+        // console.log(nodeUI[node.links[0].fromId].pos.x); //pos.x of the father!!!
+        // console.groupEnd();
+      }
+    });
+
+
+    //---------------------> nodeArray.push(seaNode) !!!!
+
+    if (!isStable) {
+      triangles = throttledDelaunatorTriangles(nodeArray);
+    }
+
+    //scene.add(ui);
   }
 
   function initLink(link) {
@@ -337,7 +465,7 @@ module.exports = function (graph, settings) {
     ui.to = layout.getNodePosition(link.toId);
 
     linkUI[link.id] = ui;
-    scene.add(ui);
+    //scene.add(ui);
   }
 
   function onGraphChanged(changes) {
@@ -364,6 +492,7 @@ module.exports = function (graph, settings) {
         }
       }
     }
+    // Call delaunator if this is still used.
   }
 
   function resetStable() {
@@ -448,11 +577,47 @@ module.exports = function (graph, settings) {
       console.log(e);
     }
     if (delaunay) {
-      //console.log(delaunay.triangles);
+      // alphaComplex(ALPHA, delaunay.triangles, nodeArray);
       // get the Alpha shape
+      //console.log(delaunay.triangles);
+      mesh.geometry.computeVertexNormals();
+      //mesh.geometry.normalizeNormals();
       return delaunay.triangles;
     }
     return null
+  }
+
+  function alphaComplex(alpha, triangles, nodeArray) {
+    /*
+    * The filter needs to be applied to faces, which means to sets of 3
+    * in the triangles array.
+    * So it is a MAP..?
+    * For every 3 indices in triangles
+
+    for (var i = 0; i < triangles.length; i += 3) {
+      let simplex = [
+                      [nodeArray[triangles[i]].pos.x, nodeArray[triangles[i]].pos.y]
+                      [nodeArray[triangles[i+1]].pos.x, nodeArray[triangles[i+1]].pos.y]
+                      [nodeArray[triangles[i+2]].pos.x, nodeArray[triangles[i+2]].pos.y]
+                    ]; //this is the triangle. you idiot
+
+      let circumradiusOfSimplex = circumradius(simplex);
+      REMOVE_FLAG = ((circumradiusOfSimplex *alpha < 1)   && circumradius && circumradius ]
+      if (REMOVE_FLAG) {
+        triangles.splice(i, 3);
+      }
+    }
+
+
+    *   get the circumradius of all the points in node
+    *   REMOVE_FLAG =  (check the circumradius for nodeArray[triangles[i]] && check the circumradius for nodeArray[triangles[i+1]] && check the circumradius for nodeArray[triangles[i+2]]
+    *   if  REMOVE_FLAG you have to remove triangles[i],triangles[i+1],triangles[i+2],
+    *   triangles.splice(i, 3);
+    */
+    return triangles.filter(function(cell) {
+      //let simplex =; // needs all the points here??????????
+      return circumradius(simplex) * alpha < 1
+    })
   }
 
 };
