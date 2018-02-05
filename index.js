@@ -359,7 +359,7 @@ module.exports = function (graph, settings) {
       for ( var i = 0; i < nodeArray.length; i++ ) {
         particlePositions[ i * 3     ] = nodeArray[i].pos.x;
         particlePositions[ i * 3 + 1 ] = nodeArray[i].pos.y;
-        if (nodeArray[i].userData.depth) {
+        if (nodeArray[i].userData.depth !== null) {
           particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].userData.depth * HEIGHT_STEP;
         }
         else {
@@ -378,7 +378,7 @@ module.exports = function (graph, settings) {
         for ( var i = 0; i < triangles.length; i++ )  {
           positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
           positions[ i * 3 + 1 ] = (nodeArray[triangles[i]].pos.y);
-          if (nodeArray[triangles[i]].userData.depth) {
+          if (nodeArray[triangles[i]].userData.depth !== null) {
             positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].userData.depth * HEIGHT_STEP);
           }
           else {
@@ -427,10 +427,15 @@ module.exports = function (graph, settings) {
     
     Object.keys(nodeUI).forEach(function(key) {
       if (!nodeUI[key].userData.seaNode && nodeUI[key].userData.depth < maxDepth) {
+        var a = new THREE.Vector3(nodeUI[node.links[0].fromId].pos.x, nodeUI[node.links[0].fromId].pos.y); //parent
+        var b = new THREE.Vector3(nodeUI[key].pos.x, nodeUI[key].pos.y); //child
+        var dir = new THREE.Vector3();
+        dir.subVectors( b, a );
+
         nodeUI[key].userData.seaNode = {
           pos: {
-            x: nodeUI[key].pos.x, //got the pos.x of the father below!!!
-            y: nodeUI[key].pos.y
+            x: dir.x, //got the pos.x of the father below!!!
+            y: dir.y
           },
           userData: {
             depth: null // this doeanst workk
@@ -438,7 +443,7 @@ module.exports = function (graph, settings) {
         }
         // console.log('adding seanode');
 
-        // nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
+        //nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
 
         // console.group();
         // console.log(nodeUI[key].userData.seaNode);
