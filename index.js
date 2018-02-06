@@ -26,13 +26,10 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, DEL_THROTTLE);
   let nodeArray = [];
   let triangles = [];
-  //let maxDepth = 0;
 
   // -------- Particles ----------
   var group;
   var pointCloud;
-  //var maxParticleCount = 69; //TODO: get the right number from recurseBF. IT IS KNOWN!
-  var particleCount = 0; // TODO: DO THISSS!!!
   var particlesData = [];
   var particlePositions;
   var linesMesh;
@@ -42,12 +39,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   var r = 800;
   var rHalf = r / 2;
 
-
-
-  
   // -------------------------------------------------------
-
-
   var defaults = require('./lib/defaults');
 
   // Default callbacks to build/render nodes and links
@@ -255,10 +247,10 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
       sizeAttenuation: false
     } );
 
-    particles = new THREE.BufferGeometry();
+    particles = new THREE.BufferGeometry(maxParticleCount);
     particlePositions = new Float32Array( maxParticleCount * 3 );
 
-    particles.setDrawRange( 0, particleCount );
+    particles.setDrawRange( 0, 0 );
     particles.addAttribute( 'position', new THREE.BufferAttribute( particlePositions, 3 ).setDynamic( true ) );
 
     // create the particle system
@@ -272,22 +264,13 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setDynamic( true ) );
 
     //geometry.computeBoundingSphere();
-    geometry.computeMo
 
     geometry.setDrawRange( 0, 0 );
-
-    // var material = new THREE.LineBasicMaterial( {
-    //   vertexColors: THREE.VertexColors,
-    //   //blending: THREE.AdditiveBlending,
-    //   transparent: true
-    // } );
 
     // var material = new THREE.MeshDepthMaterial({color: 0x008060, side: THREE.DoubleSide});
 
     var material = new THREE.MeshLambertMaterial( {
       color: 0xaaaaaa,
-      //specular: 0xffaaaa,
-      //shininess: 100,
       side: THREE.DoubleSide, vertexColors: THREE.VertexColors, flatShading: false
     } );
 
