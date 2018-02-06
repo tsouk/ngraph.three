@@ -32,7 +32,7 @@ module.exports = function (graph, settings) {
   var group;
   var pointCloud;
   var maxParticleCount = 1500; //TODO: get the right number from recurseBF. IT IS KNOWN!
-  var particleCount = 1500; // TODO: DO THISSS!!!
+  var particleCount = 0; // TODO: DO THISSS!!!
   var particlesData = [];
   var particlePositions;
   var linesMesh;
@@ -173,6 +173,8 @@ module.exports = function (graph, settings) {
      */
     resetStable: resetStable,
     isStable: function() {isStable = true},
+    setMaxDepth: function(maxDepth) {maxDepth = maxDepth},
+    setMaxParticleCount: function(maxParticleCount) {maxParticleCount = maxParticleCount},
 
     /**
      * Stops animation and deallocates all allocated resources
@@ -421,8 +423,7 @@ module.exports = function (graph, settings) {
       node.links[0].data &&
       node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
     nodeUI[node.id].userData.depth = depth; 
-    maxDepth = maxDepth < depth ? depth : maxDepth;
-    //console.log(maxDepth);
+    console.log(maxDepth);
     nodeArray.push(ui);
     
     Object.keys(nodeUI).forEach(function(key) {
