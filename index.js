@@ -31,7 +31,7 @@ module.exports = function (graph, settings) {
   // -------- Particles ----------
   var group;
   var pointCloud;
-  var maxParticleCount = 1500; //TODO: get the right number from recurseBF. IT IS KNOWN!
+  var maxParticleCount = 69; //TODO: get the right number from recurseBF. IT IS KNOWN!
   var particleCount = 0; // TODO: DO THISSS!!!
   var particlesData = [];
   var particlePositions;
@@ -233,12 +233,12 @@ module.exports = function (graph, settings) {
     helper.material.blending = THREE.AdditiveBlending;
     helper.material.transparent = true;
     group.add( helper );
-    var segments = maxParticleCount * maxParticleCount;
+    //var segments = maxParticleCount * maxParticleCount;
 
-    positions = new Float32Array( segments * 3 );
-    
-    var faceColor = new THREE.Color( 0x108060 );
-    colors = new Float32Array( maxParticleCount * 3 );
+    positions = new Float32Array( maxParticleCount * maxParticleCount ); // not sure about this number
+
+    var faceColor = new THREE.Color( 0xbc6060 );
+    colors = new Float32Array( maxParticleCount * maxParticleCount );
     for (let index = 0; index < colors.length; index += 3) {
       colors[index] = faceColor.r;
       colors[index+1] = faceColor.g;
@@ -423,7 +423,6 @@ module.exports = function (graph, settings) {
       node.links[0].data &&
       node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
     nodeUI[node.id].userData.depth = depth; 
-    console.log(maxDepth);
     nodeArray.push(ui);
     
     Object.keys(nodeUI).forEach(function(key) {
