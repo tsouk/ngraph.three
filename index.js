@@ -38,6 +38,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   var linesMesh;
   var positions, colors;
   var particles;
+  var normalsComputed = false;
   var r = 800;
   var rHalf = r / 2;
 
@@ -270,7 +271,8 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     // add normals???
     geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setDynamic( true ) );
 
-    geometry.computeBoundingSphere();
+    //geometry.computeBoundingSphere();
+    geometry.computeMo
 
     geometry.setDrawRange( 0, 0 );
 
@@ -280,8 +282,12 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     //   transparent: true
     // } );
 
-    var material = new THREE.MeshPhongMaterial( {
-      color: 0xaaaaaa, specular: 0xffffff, shininess: 50,
+    // var material = new THREE.MeshDepthMaterial({color: 0x008060, side: THREE.DoubleSide});
+
+    var material = new THREE.MeshLambertMaterial( {
+      color: 0xaaaaaa,
+      //specular: 0xffaaaa,
+      //shininess: 100,
       side: THREE.DoubleSide, vertexColors: THREE.VertexColors, flatShading: false
     } );
 
@@ -393,7 +399,8 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
         }
   
         // COMPUTE THE NORMALS YOURSELF, currently computed with the dalaunay... which is kind of ok.
-  
+        mesh.geometry.computeVertexNormals();
+        mesh.geometry.normalizeNormals();
         mesh.geometry.setDrawRange( 0, triangles.length * 3 );
         mesh.geometry.attributes.position.needsUpdate = true;
         mesh.geometry.attributes.color.needsUpdate = true;
@@ -401,6 +408,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
       }
 
     }
+
     renderer.render(scene, camera);
   }
 
@@ -558,8 +566,11 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
       // alphaComplex(ALPHA, delaunay.triangles, nodeArray);
       // get the Alpha shape
       //console.log(delaunay.triangles);
-      mesh.geometry.computeVertexNormals();
-      //mesh.geometry.normalizeNormals();
+      // if (!normalsComputed) {
+      //   mesh.geometry.computeVertexNormals();
+      //   //normalsComputed = true;
+      // }
+      //mesh.geometry.normalizeNormals(); // -----> Do?
       return delaunay.triangles;
     }
     return null
