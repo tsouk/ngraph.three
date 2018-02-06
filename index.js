@@ -4,10 +4,10 @@ const circumradius = require('circumradius');
 const _ = require('lodash');
 const DEL_THROTTLE = 500;
 const ALPHA = 20;
-const HEIGHT_STEP = 30;
+const HEIGHT_STEP = 15;
 const consoleThrottled = _.throttle(console.log, DEL_THROTTLE);
 
-module.exports = function (graph, settings) {
+module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   const merge = require('ngraph.merge');
   settings = merge(settings, {
     interactive: true
@@ -26,12 +26,12 @@ module.exports = function (graph, settings) {
   let throttledDelaunatorTriangles = _.throttle(getDelaunayTriangles, DEL_THROTTLE);
   let nodeArray = [];
   let triangles = [];
-  let maxDepth = 0;
+  //let maxDepth = 0;
 
   // -------- Particles ----------
   var group;
   var pointCloud;
-  var maxParticleCount = 69; //TODO: get the right number from recurseBF. IT IS KNOWN!
+  //var maxParticleCount = 69; //TODO: get the right number from recurseBF. IT IS KNOWN!
   var particleCount = 0; // TODO: DO THISSS!!!
   var particlesData = [];
   var particlePositions;
@@ -188,7 +188,7 @@ module.exports = function (graph, settings) {
     layout: layout
   };
 
-  initialize();
+  initialize(maxParticleCount, maxDepth);
 
   return graphics;
 
@@ -198,6 +198,7 @@ module.exports = function (graph, settings) {
   }
 
   function initialize() {
+    console.log(`maxParticleCount: ${maxParticleCount}, maxDepth: ${maxDepth}`);
     nodeUIBuilder = defaults.createNodeUI;
     nodeRenderer  = defaults.nodeRenderer;
     linkUIBuilder = defaults.createLinkUI;
@@ -235,10 +236,10 @@ module.exports = function (graph, settings) {
     group.add( helper );
     //var segments = maxParticleCount * maxParticleCount;
 
-    positions = new Float32Array( maxParticleCount * maxParticleCount ); // not sure about this number
+    positions = new Float32Array( maxParticleCount * 6 * 3 ); // not sure about this number
 
-    var faceColor = new THREE.Color( 0xbc6060 );
-    colors = new Float32Array( maxParticleCount * maxParticleCount );
+    var faceColor = new THREE.Color( 0xbc632b );
+    colors = new Float32Array( maxParticleCount * 6 * 3 );
     for (let index = 0; index < colors.length; index += 3) {
       colors[index] = faceColor.r;
       colors[index+1] = faceColor.g;
@@ -376,6 +377,9 @@ module.exports = function (graph, settings) {
       // if (!isStable) {
       //   triangles = throttledDelaunatorTriangles(nodeArray);
       // }
+
+
+      // TODO: Maybe maxDepth should not be too big... looks weird
       if (triangles && triangles.length > 0) {
         for ( var i = 0; i < triangles.length; i++ )  {
           positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
@@ -424,41 +428,10 @@ module.exports = function (graph, settings) {
       node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
     nodeUI[node.id].userData.depth = depth; 
     nodeArray.push(ui);
-    
-    Object.keys(nodeUI).forEach(function(key) {
-      if (!nodeUI[key].userData.seaNode && nodeUI[key].userData.depth < maxDepth) {
-        var a = new THREE.Vector3(nodeUI[node.links[0].fromId].pos.x, nodeUI[node.links[0].fromId].pos.y); //parent
-        var b = new THREE.Vector3(nodeUI[key].pos.x, nodeUI[key].pos.y); //child
-        var dir = new THREE.Vector3();
-        dir.subVectors( b, a );
-
-        nodeUI[key].userData.seaNode = {
-          pos: {
-            x: dir.x, //got the pos.x of the father below!!!
-            y: dir.y
-          },
-          userData: {
-            depth: null // this doeanst workk
-          }
-        }
-        // console.log('adding seanode');
-
-        //nodeArray.push(nodeUI[key].userData.seaNode); // <-------- Add it?
-
-        // console.group();
-        // console.log(nodeUI[key].userData.seaNode);
-        // console.log(nodeUI[node.links[0].fromId].pos.x); //pos.x of the father!!!
-        // console.groupEnd();
-      }
-    });
-
-
-    //---------------------> nodeArray.push(seaNode) !!!!
 
     if (!isStable) {
       triangles = throttledDelaunatorTriangles(nodeArray);
     }
-
     //scene.add(ui);
   }
 
