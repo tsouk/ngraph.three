@@ -40,12 +40,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   var rHalf = r / 2;
 
   // -------------------------------------------------------
-  var defaults = require('./lib/defaults');
-
-  // Default callbacks to build/render nodes and links
-  var nodeUIBuilder, nodeRenderer, linkUIBuilder, linkRenderer;
-
-  var nodeUI, linkUI; // Storage for UI of nodes/links
+  var nodeUI; // Storage for UI of nodes/links
   var controls = { update: function noop() {} };
 
   var graphics = {
@@ -83,7 +78,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
      * @returns {object} this for chaining.
      */
     createNodeUI : function (createNodeUICallback) {
-      nodeUIBuilder = createNodeUICallback;
+      //nodeUIBuilder = createNodeUICallback;
       rebuildUI();
       return this;
     },
@@ -94,70 +89,6 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
      */
     rebuild : function () {
       rebuildUI();
-    },
-
-    /**
-     * This callback is called by graphics when it wants to render node on
-     * a screen.
-     *
-     * @callback renderNodeCallback
-     * @param {object} node - result of createNodeUICallback(). It contains anything
-     * you'd need to render a node
-     */
-    /**
-     * Allows clients to pass custom node rendering callback
-     *
-     * @param {renderNodeCallback} renderNodeCallback - Callback which renders
-     * node.
-     *
-     * @returns {object} this for chaining.
-     */
-    renderNode: function (renderNodeCallback) {
-      nodeRenderer = renderNodeCallback;
-      return this;
-    },
-
-    /**
-     * This callback creates new UI for a graph link. This becomes helpful
-     * when you want to precalculate some properties, which otherwise could be
-     * expensive during rendering frame.
-     *
-     * @callback createLinkUICallback
-     * @param {object} link - graph link for which UI is required.
-     * @returns {object} arbitrary object which will be later passed to renderNode
-     */
-    /**
-     * This function allows clients to pass custom node UI creation callback
-     *
-     * @param {createLinkUICallback} createLinkUICallback - The callback that
-     * creates new link UI
-     * @returns {object} this for chaining.
-     */
-    createLinkUI : function (createLinkUICallback) {
-      linkUIBuilder = createLinkUICallback;
-      rebuildUI();
-      return this;
-    },
-
-    /**
-     * This callback is called by graphics when it wants to render link on
-     * a screen.
-     *
-     * @callback renderLinkCallback
-     * @param {object} link - result of createLinkUICallback(). It contains anything
-     * you'd need to render a link
-     */
-    /**
-     * Allows clients to pass custom link rendering callback
-     *
-     * @param {renderLinkCallback} renderLinkCallback - Callback which renders
-     * link.
-     *
-     * @returns {object} this for chaining.
-     */
-    renderLink: function (renderLinkCallback) {
-      linkRenderer = renderLinkCallback;
-      return this;
     },
 
     /**
@@ -192,22 +123,17 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
 
   function initialize() {
     console.log(`maxParticleCount: ${maxParticleCount}, maxDepth: ${maxDepth}`);
-    nodeUIBuilder = defaults.createNodeUI;
-    nodeRenderer  = defaults.nodeRenderer;
-    linkUIBuilder = defaults.createLinkUI;
-    linkRenderer  = defaults.linkRenderer;
-    nodeUI = {}; linkUI = {}; // Storage for UI of nodes/links
-
-    graph.forEachLink(initLink);
-    graph.forEachNode(initNode);
+    nodeUI = {}; // Storage for UI of nodes
 
     graph.on('changed', onGraphChanged);
 
     if (settings.interactive) createControls();
 
-    //scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
-    // ---------- Lights ----------
+    // ---------- Fog n shit ------
+    scene.background = new THREE.Color( 0x00141a );
+    scene.fog = new THREE.FogExp2( 0x003b4d, 0.001 );
 
+    // ---------- Lights ----------
     scene.add( new THREE.AmbientLight( 0x444444 ) );
 
     var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
@@ -218,16 +144,14 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     light2.position.set( 0, -1, 0 );
     scene.add( light2 );
 
-
     // -------- Particles ----------
     group = new THREE.Group();
     scene.add( group );
     var helper = new THREE.BoxHelper( new THREE.Mesh( new THREE.BoxGeometry( r, r, r ) ) );
-    helper.material.color.setHex( 0x080808 );
+    helper.material.color.setHex( 0xfafafa );
     helper.material.blending = THREE.AdditiveBlending;
     helper.material.transparent = true;
     group.add( helper );
-    //var segments = maxParticleCount * maxParticleCount;
 
     positions = new Float32Array( maxParticleCount * 6 * 3 ); // not sure about this number
 
@@ -241,10 +165,10 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
 
     var pMaterial = new THREE.PointsMaterial( {
       color: 0xFF0000,
-      size: 5,
-      //blending: THREE.AdditiveBlending,
+      size: 4,
+      blending: THREE.AdditiveBlending,
       transparent: true,
-      sizeAttenuation: false
+      sizeAttenuation: true
     } );
 
     particles = new THREE.BufferGeometry(maxParticleCount);
@@ -340,48 +264,35 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     if (beforeFrameRender) {
       beforeFrameRender();
     }
-    // todo: this adds GC pressure. Remove functional iterators
-    //Object.keys(linkUI).forEach(renderLink);
-    //Object.keys(nodeUI).forEach(renderNode);
-   
-    // Object.keys(nodeUI).forEach(function(key) {
-      // renderNode(key);
-    // });
+
     if (!isStable) {
+      // Calculate Particle positions
       for ( var i = 0; i < nodeArray.length; i++ ) {
         particlePositions[ i * 3     ] = nodeArray[i].pos.x;
         particlePositions[ i * 3 + 1 ] = nodeArray[i].pos.y;
-        if (nodeArray[i].userData.depth !== null) {
-          particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].userData.depth * HEIGHT_STEP;
+        if (nodeArray[i].depth !== null) {
+          particlePositions[ i * 3 + 2 ] = -1 * nodeArray[i].depth * HEIGHT_STEP;
         }
         else {
           particlePositions[ i * 3 + 2 ] = -1 * maxDepth * HEIGHT_STEP;
         }
       }
-      //console.log(particlePositions);
       particles.setDrawRange( 0, nodeArray.length );
       pointCloud.geometry.attributes.position.needsUpdate = true;
   
-      // TODO: find the best place to call the Delaunator
-      // if (!isStable) {
-      //   triangles = throttledDelaunatorTriangles(nodeArray);
-      // }
-
-
       // TODO: Maybe maxDepth should not be too big... looks weird
       if (triangles && triangles.length > 0) {
         for ( var i = 0; i < triangles.length; i++ )  {
           positions[ i * 3 + 0 ] = (nodeArray[triangles[i]].pos.x);
           positions[ i * 3 + 1 ] = (nodeArray[triangles[i]].pos.y);
-          if (nodeArray[triangles[i]].userData.depth !== null) {
-            positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].userData.depth * HEIGHT_STEP);
+          if (nodeArray[triangles[i]].depth !== null) {
+            positions[ i * 3 + 2 ] = (-1 * nodeArray[triangles[i]].depth * HEIGHT_STEP);
           }
           else {
             positions[ i * 3 + 2 ] = (-1 * maxDepth * HEIGHT_STEP);
           }
         }
   
-        // COMPUTE THE NORMALS YOURSELF, currently computed with the dalaunay... which is kind of ok.
         mesh.geometry.computeVertexNormals();
         mesh.geometry.normalizeNormals();
         mesh.geometry.setDrawRange( 0, triangles.length * 3 );
@@ -395,46 +306,26 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     renderer.render(scene, camera);
   }
 
-  function renderNode(nodeId) {
-    nodeRenderer(nodeUI[nodeId]);
-  }
-
-  function renderLink(linkId) {
-    linkRenderer(linkUI[linkId]);
-  }
-
   function initNode(node) {
-    // console.log(node);
-    // this shit has to change, I don't need the mesh at all...
-    var ui = nodeUIBuilder(node); // TODO: this is the nodeS that are hanging around
-    if (!ui) return;
+    //console.log(node);
+    var ui = {}; 
+
     // augment it with position data:
     ui.pos = layout.getNodePosition(node.id);
-    // and store for subsequent use:
-    nodeUI[node.id] = ui;
 
     let depth = (node.links &&
       node.links.length > 0 &&
       node.links[0].data &&
       node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
-    nodeUI[node.id].userData.depth = depth; 
+
+    ui.depth = depth
+    // and store for subsequent use:
+    nodeUI[node.id] = ui;
     nodeArray.push(ui);
 
     if (!isStable) {
       triangles = throttledDelaunatorTriangles(nodeArray);
     }
-    //scene.add(ui);
-  }
-
-  function initLink(link) {
-    var ui = linkUIBuilder(link);
-    if (!ui) return;
-
-    ui.from = layout.getNodePosition(link.fromId);
-    ui.to = layout.getNodePosition(link.toId);
-
-    linkUI[link.id] = ui;
-    //scene.add(ui);
   }
 
   function onGraphChanged(changes) {
@@ -445,19 +336,11 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
         if (change.node) {
           initNode(change.node);
         }
-        if (change.link) {
-          initLink(change.link);
-        }
       } else if (change.changeType === 'remove') {
         if (change.node) {
           var node = nodeUI[change.node.id];
           if (node) { scene.remove(node); }
           delete nodeUI[change.node.id];
-        }
-        if (change.link) {
-          var link = linkUI[change.link.id];
-          if (link) { scene.remove(link); }
-          delete linkUI[change.link.id];
         }
       }
     }
@@ -524,17 +407,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   }
 
   function rebuildUI() {
-    Object.keys(nodeUI).forEach(function (nodeId) {
-      scene.remove(nodeUI[nodeId]);
-    });
     nodeUI = {};
-
-    Object.keys(linkUI).forEach(function (linkId) {
-      scene.remove(linkUI[linkId]);
-    });
-    linkUI = {};
-
-    graph.forEachLink(initLink);
     graph.forEachNode(initNode);
   }
 
