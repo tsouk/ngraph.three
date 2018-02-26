@@ -129,6 +129,10 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     beforeFrameRender = cb;
   }
 
+  function normalize (val, max, min) {
+    return (val - min) / (max - min);
+  }
+
   function initialize() {
     console.log(`maxParticleCount: ${maxParticleCount}, maxDepth: ${maxDepth}`);
     nodeUI = {}; // Storage for UI of nodes
@@ -276,7 +280,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
         particlePositions[i * 3] = nodeArray[i].pos.x;
         particlePositions[i * 3 + 1] = nodeArray[i].pos.y;
         if (nodeArray[i].depth !== null) {
-          particlePositions[i * 3 + 2] = -1 * nodeArray[i].depth * HEIGHT_STEP;
+          particlePositions[i * 3 + 2] = -1 * (nodeArray[i].depth * HEIGHT_STEP);// - normalize(nodeArray[i].bytes, HEIGHT_STEP, 0);
         } else {
           particlePositions[i * 3 + 2] = -1 * maxDepth * HEIGHT_STEP;
         }
@@ -290,7 +294,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
           positions[i * 3 + 0] = (nodeArray[triangles[i]].pos.x);
           positions[i * 3 + 1] = (nodeArray[triangles[i]].pos.y);
           if (nodeArray[triangles[i]].depth !== null) {
-            positions[i * 3 + 2] = (-1 * nodeArray[triangles[i]].depth * HEIGHT_STEP);
+            positions[i * 3 + 2] = -1 * (nodeArray[triangles[i]].depth) * HEIGHT_STEP;
           } else {
             positions[i * 3 + 2] = (-1 * maxDepth * HEIGHT_STEP);
           }
@@ -352,7 +356,6 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
       node.links[0].data &&
       node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
 
-    ui.depth = depth
     // and store for subsequent use:
     nodeUI[node.id] = ui;
     nodeArray.push(ui);
