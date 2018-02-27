@@ -130,6 +130,7 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
   }
 
   function normalize (val, max, min) {
+    //need max of bytes from the heaviest child.
     return (val - min) / (max - min);
   }
 
@@ -280,7 +281,8 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
         particlePositions[i * 3] = nodeArray[i].pos.x;
         particlePositions[i * 3 + 1] = nodeArray[i].pos.y;
         if (nodeArray[i].depth !== null) {
-          particlePositions[i * 3 + 2] = -1 * (nodeArray[i].depth * HEIGHT_STEP);// - normalize(nodeArray[i].bytes, HEIGHT_STEP, 0);
+          //particlePositions[i * 3 + 2] = -1 * (nodeArray[i].depth- nodeArray[i].bytes*0.02) * HEIGHT_STEP;
+          particlePositions[i * 3 + 2] = -1 * (nodeArray[i].depth) * HEIGHT_STEP;
         } else {
           particlePositions[i * 3 + 2] = -1 * maxDepth * HEIGHT_STEP;
         }
@@ -351,11 +353,10 @@ module.exports = function (graph, settings, maxParticleCount, maxDepth) {
     // augment it with position data:
     ui.pos = layout.getNodePosition(node.id);
 
-    let depth = (node.links &&
-      node.links.length > 0 &&
-      node.links[0].data &&
-      node.links[0].data.depthOfChild) ? node.links[0].data.depthOfChild : 0;
-
+    // Why depthOfChild: In the graph we add links, so the first thing that is added is a link with a depthOfChild. 
+    ui.depth = _.get(node, 'links[0].data.depthOfChild', 0); // probably needs a -1 here
+    ui.bytes = _.get(node, 'links[0].data.bytesOfChild', 0);
+    
     // and store for subsequent use:
     nodeUI[node.id] = ui;
     nodeArray.push(ui);
